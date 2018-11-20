@@ -216,6 +216,7 @@ func (l *Lexer) Error(format string, args ...interface{}) StateFunc {
 		Type:     ErrorToken,
 		Value:    fmt.Sprintf(format, args...),
 		Position: l.position,
+		Line:     l.line,
 	}
 	return nil
 }
