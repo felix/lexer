@@ -1,22 +1,31 @@
 package lexer
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 )
 
+// StateFunc captures the movement from one state to the next.
 type StateFunc func(*Lexer) StateFunc
 
+// TokenType identifies the tokens emitted.
 type TokenType int
 
 const (
-	EOFRune    rune      = -1
+	// EOFRune is a convenience for EOF
+	EOFRune rune = -1
+	// ErrorToken is returned on error
 	ErrorToken TokenType = -1
-	EOFToken   TokenType = 0
+	// EOFToken is return on EOF
+	EOFToken TokenType = 0
 )
 
+var lineSep = []byte{'\n'}
+
+// Token is returned by the lexer.
 type Token struct {
 	Type     TokenType
 	Value    string
@@ -24,13 +33,16 @@ type Token struct {
 	Line     int
 }
 
+// String implements Stringer
 func (t Token) String() string {
 	return fmt.Sprintf("[%d] %s", t.Type, t.Value)
 }
 
+// Lexer represents the lexer machine.
 type Lexer struct {
 	source     string
 	start      int
+	line       int
 	position   int
 	lastWidth  int
 	startState StateFunc
@@ -44,6 +56,7 @@ func New(src string, start StateFunc) *Lexer {
 		source:     src,
 		startState: start,
 		start:      0,
+		line:       1,
 		position:   0,
 		history:    newStack(),
 	}
@@ -60,6 +73,7 @@ func (l *Lexer) Start() {
 	go l.run()
 }
 
+// StartSync starts the lexer synchronously.
 func (l *Lexer) StartSync() {
 	// Take half the string length as a buffer size.
 	buffSize := len(l.source) / 2
@@ -75,7 +89,6 @@ func (l *Lexer) run() {
 	for state != nil {
 		state = state(l)
 	}
-	//fmt.Println("nil state")
 	close(l.tokens)
 }
 
@@ -91,11 +104,34 @@ func (l *Lexer) Emit(t TokenType) {
 		Type:     t,
 		Value:    l.Current(),
 		Position: l.position,
+		Line:     l.line,
 	}
-	//fmt.Printf("emitting: %v\n", tok)
 	l.tokens <- tok
+	l.checkLines()
 	l.start = l.position
 	l.history.clear()
+}
+
+func (l *Lexer) checkLines() {
+	val := l.Current()
+	l.line += bytes.Count([]byte(val), lineSep)
+}
+
+// Next pulls the next rune from the Lexer and returns it, moving the position
+// forward in the source.
+func (l *Lexer) Next() rune {
+	var r rune
+	var s int
+	str := l.source[l.position:]
+	if len(str) == 0 {
+		r, s = EOFRune, 0
+	} else {
+		r, s = utf8.DecodeRuneInString(str)
+	}
+	l.position += s
+	l.history.push(r)
+
+	return r
 }
 
 // Ignore clears the history stack and then sets the current beginning position
@@ -103,6 +139,7 @@ func (l *Lexer) Emit(t TokenType) {
 // of the source being analyzed.
 func (l *Lexer) Ignore() {
 	l.history.clear()
+	l.checkLines()
 	l.start = l.position
 }
 
@@ -129,23 +166,6 @@ func (l *Lexer) Backup() {
 	}
 }
 
-// Next pulls the next rune from the Lexer and returns it, moving the position
-// forward in the source.
-func (l *Lexer) Next() rune {
-	var r rune
-	var s int
-	str := l.source[l.position:]
-	if len(str) == 0 {
-		r, s = EOFRune, 0
-	} else {
-		r, s = utf8.DecodeRuneInString(str)
-	}
-	l.position += s
-	l.history.push(r)
-
-	return r
-}
-
 // Accept receives a string containing all acceptable strings and will contine
 // over each consecutive character in the source until a token not in the given
 // string is encountered. This should be used to quickly pull token parts.
@@ -166,6 +186,7 @@ func (l *Lexer) AcceptRun(valid string) (n int) {
 	return n
 }
 
+// SkipWhitespace continues over all unicode whitespace.
 func (l *Lexer) SkipWhitespace() {
 	for {
 		r := l.Next()
@@ -185,13 +206,12 @@ func (l *Lexer) SkipWhitespace() {
 // NextToken returns the next token from the lexer and done
 func (l *Lexer) NextToken() (*Token, bool) {
 	if tok, ok := <-l.tokens; ok {
-		//fmt.Printf("next token: %v, ok: %t\n", tok, ok)
 		return &tok, false
 	}
 	return nil, true
 }
 
-func (l *Lexer) ErrorState(format string, args ...interface{}) StateFunc {
+func (l *Lexer) Error(format string, args ...interface{}) StateFunc {
 	l.tokens <- Token{
 		Type:     ErrorToken,
 		Value:    fmt.Sprintf(format, args...),
