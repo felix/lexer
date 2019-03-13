@@ -166,7 +166,7 @@ func (l *Lexer) Backup() {
 	}
 }
 
-// Accept receives a string containing all acceptable strings and will contine
+// Accept receives a string containing all acceptable strings and will continue
 // over each consecutive character in the source until a token not in the given
 // string is encountered. This should be used to quickly pull token parts.
 func (l *Lexer) Accept(valid string) bool {
