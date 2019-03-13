@@ -3,7 +3,7 @@ pkgs	:= $(shell go list ./...)
 
 .PHONY: test
 test: lint ## Run tests with coverage
-	go test -short -cover -coverprofile coverage.out $(pkgs)
+	go test -race -short -cover -coverprofile coverage.out $(pkgs)
 	go tool cover -html=coverage.out -o coverage.html
 
 .PHONY: lint
