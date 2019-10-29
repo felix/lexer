@@ -1,3 +1,3 @@
-module src.userspace.com.au/felix/lexer
+module src.userspace.com.au/lexer
 
 go 1.12
