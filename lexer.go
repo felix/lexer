@@ -203,6 +203,11 @@ func (l *Lexer) SkipWhitespace() {
 	}
 }
 
+// Tokens returns the a token channel.
+func (l *Lexer) Tokens() <-chan Token {
+	return l.tokens
+}
+
 // NextToken returns the next token from the lexer and done
 func (l *Lexer) NextToken() (*Token, bool) {
 	if tok, ok := <-l.tokens; ok {
