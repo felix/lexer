@@ -89,7 +89,7 @@ func TestMovingThroughString(t *testing.T) {
 
 func TestNumbers(t *testing.T) {
 	l := New("123", NumberState)
-	l.Start()
+	l.StartSync()
 	tok, done := l.NextToken()
 	if done {
 		t.Fatal("Expected a token but lexer finished")
@@ -123,7 +123,7 @@ func TestNewlines(t *testing.T) {
 456
 789`
 	l := New(src, NewlineState)
-	l.Start()
+	l.StartSync()
 	tok, done := l.NextToken()
 	if done {
 		t.Fatal("Expected done, but it wasn't.")
@@ -178,7 +178,7 @@ func TestBackup(t *testing.T) {
 
 func TestWhitespace(t *testing.T) {
 	l := New("    1", NumberState)
-	l.Start()
+	l.StartSync()
 	l.SkipWhitespace()
 
 	tok, done := l.NextToken()
@@ -205,7 +205,7 @@ func TestMultipleTokens(t *testing.T) {
 	}
 
 	l := New("123.hello  675.world", NumberState)
-	l.Start()
+	l.StartSync()
 
 	for _, c := range cases {
 		tok, done := l.NextToken()
@@ -234,7 +234,7 @@ func TestMultipleTokens(t *testing.T) {
 
 func TestError(t *testing.T) {
 	l := New("notaspace", WhitespaceState)
-	l.Start()
+	l.StartSync()
 
 	tok, done := l.NextToken()
 	if done {

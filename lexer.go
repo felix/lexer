@@ -64,13 +64,7 @@ func New(src string, start StateFunc) *Lexer {
 
 // Start begins executing the Lexer in an asynchronous manner (using a goroutine).
 func (l *Lexer) Start() {
-	// Take half the string length as a buffer size.
-	buffSize := len(l.source) / 2
-	if buffSize <= 0 {
-		buffSize = 1
-	}
-	l.tokens = make(chan Token, buffSize)
-	go l.run()
+	go l.StartSync()
 }
 
 // StartSync starts the lexer synchronously.
